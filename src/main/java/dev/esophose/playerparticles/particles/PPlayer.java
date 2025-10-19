@@ -388,7 +388,8 @@ public class PPlayer {
             }
         }
 
-        PlayerParticlesAPI.getInstance().savePlayerParticleGroup(this.getPlayer(), activeGroup);
+        // Active group is automatically persisted - no need to explicitly save it
+        // Removed: PlayerParticlesAPI.getInstance().savePlayerParticleGroup(this.getPlayer(), activeGroup);
     }
 
 }

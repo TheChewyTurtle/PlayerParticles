@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'dev.esophose'
-version = '8.10'
+version = '8.10-FOLIA'
 
 java {
     targetCompatibility = JavaVersion.VERSION_1_8
@@ -33,6 +33,7 @@ repositories {
     maven { url = 'https://repo.codemc.org/repository/maven-public' }
     maven { url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
     maven { url = 'https://repo.rosewooddev.io/repository/public/' }
+    maven { url = 'https://repo.tcoded.com/releases' } // FoliaLib
 }
 
 dependencies {
@@ -40,15 +41,19 @@ dependencies {
     compileOnly 'org.jetbrains:annotations:24.0.1'
     compileOnly 'me.clip:placeholderapi:2.11.6'
     api 'org.codemc.worldguardwrapper:worldguardwrapper:1.2.1-SNAPSHOT'
-    api 'dev.rosewood:rosegarden:1.5.3'
+    api 'dev.rosewood:rosegarden:1.5.3' // TODO: Update to latest version with Folia support if available
+    api 'com.tcoded:FoliaLib:0.4.3' // Folia scheduler wrapper for cross-compatibility
 }
 
 shadowJar {
     archiveClassifier.set('')
-    minimize()
+    minimize {
+        exclude(dependency('com.tcoded:FoliaLib:.*'))
+    }
 
     relocate('dev.rosewood.rosegarden', 'dev.esophose.playerparticles.libs.rosegarden')
     relocate('org.codemc.worldguardwrapper', 'dev.esophose.playerparticles.libs.worldguardwrapper')
+    relocate('com.tcoded.folialib', 'dev.esophose.playerparticles.libs.folialib')
 }
 
 processResources {
