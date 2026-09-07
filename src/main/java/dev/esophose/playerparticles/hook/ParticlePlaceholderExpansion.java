@@ -2,8 +2,11 @@ package dev.esophose.playerparticles.hook;
 
 import dev.esophose.playerparticles.PlayerParticles;
 import dev.esophose.playerparticles.manager.DataManager;
+import dev.esophose.playerparticles.manager.ParticleGroupPresetManager;
 import dev.esophose.playerparticles.particles.PPlayer;
 import dev.esophose.playerparticles.particles.ParticlePair;
+import dev.esophose.playerparticles.particles.preset.ParticleGroupPreset;
+import java.util.Collection;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.entity.Player;
@@ -17,11 +20,11 @@ public class ParticlePlaceholderExpansion extends PlaceholderExpansion {
     }
 
     @Override
-    public String onPlaceholderRequest(Player p, String placeholder) {
-        if (p == null)
+    public String onPlaceholderRequest(Player player, String placeholder) {
+        if (player == null)
             return null;
 
-        PPlayer pplayer = this.playerParticles.getManager(DataManager.class).getPPlayer(p.getUniqueId());
+        PPlayer pplayer = this.playerParticles.getManager(DataManager.class).getPPlayer(player.getUniqueId());
         if (pplayer == null)
             return null;
 
@@ -62,6 +65,16 @@ public class ParticlePlaceholderExpansion extends PlaceholderExpansion {
             } else if (placeholder.startsWith("particle_data_")) {
                 return ChatColor.stripColor(particle.getDataString());
             }
+        } else if (placeholder.startsWith("has_preset_group_")) {
+            String groupName = placeholder.substring(17);
+            ParticleGroupPresetManager presetManager = this.playerParticles.getManager(ParticleGroupPresetManager.class);
+            ParticleGroupPreset preset = presetManager.getPresetGroup(groupName);
+            if (preset == null)
+                return "false";
+
+            Collection<ParticlePair> presetGroup = preset.getGroup().getParticles().values();
+            Collection<ParticlePair> playerParticles = pplayer.getActiveParticles();
+            return String.valueOf(playerParticles.containsAll(presetGroup));
         }
 
         return null;

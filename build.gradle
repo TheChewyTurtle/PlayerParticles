@@ -1,13 +1,14 @@
 import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins {
-    id 'com.gradleup.shadow' version '8.3.5'
+    id 'com.gradleup.shadow' version '9.2.2'
     id 'maven-publish'
     id 'java-library'
 }
 
 group = 'dev.esophose'
-version = '8.10-FOLIA'
+// Upstream 8.13 (Paper 26.2, RoseGarden 1.5.7) plus the Folia fork fixes; see ../FOLIA_SUPPORT.md
+version = '8.13-FOLIA'
 
 java {
     targetCompatibility = JavaVersion.VERSION_1_8
@@ -33,27 +34,24 @@ repositories {
     maven { url = 'https://repo.codemc.org/repository/maven-public' }
     maven { url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
     maven { url = 'https://repo.rosewooddev.io/repository/public/' }
-    maven { url = 'https://repo.tcoded.com/releases' } // FoliaLib
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT'
+    // Pinned to the same Paper 26.2 build the other Killion plugins use (upstream uses 26.2.build.+)
+    compileOnly 'io.papermc.paper:paper-api:26.2.build.121-stable'
     compileOnly 'org.jetbrains:annotations:24.0.1'
-    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'me.clip:placeholderapi:2.12.2'
     api 'org.codemc.worldguardwrapper:worldguardwrapper:1.2.1-SNAPSHOT'
-    api 'dev.rosewood:rosegarden:1.5.3' // TODO: Update to latest version with Folia support if available
-    api 'com.tcoded:FoliaLib:0.4.3' // Folia scheduler wrapper for cross-compatibility
+    // RoseGarden 1.5.7+: year-based server versions (26.x) and the Folia scheduler wrapper
+    api 'dev.rosewood:rosegarden:1.5.7'
 }
 
 shadowJar {
     archiveClassifier.set('')
-    minimize {
-        exclude(dependency('com.tcoded:FoliaLib:.*'))
-    }
+    minimize()
 
     relocate('dev.rosewood.rosegarden', 'dev.esophose.playerparticles.libs.rosegarden')
     relocate('org.codemc.worldguardwrapper', 'dev.esophose.playerparticles.libs.worldguardwrapper')
-    relocate('com.tcoded.folialib', 'dev.esophose.playerparticles.libs.folialib')
 }
 
 processResources {
@@ -67,7 +65,7 @@ processResources {
 publishing {
     publications {
         shadow(MavenPublication) { publication ->
-            project.shadow.component(publication)
+            from components.shadow
             artifactId = 'playerparticles'
             pom {
                 name = 'playerparticles'
