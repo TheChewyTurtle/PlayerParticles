@@ -69,8 +69,12 @@ public class ParticleManager extends Manager implements Listener, Runnable {
 
     @Override
     public void reload() {
-        this.rosePlugin.getManager(DataManager.class).loadEffects();
-        
+        // FOLIA FIX: Delay loading effects to ensure worlds and managers are fully initialized
+        // This prevents null world lookups that cause fixed effects to be incorrectly deleted
+        this.rosePlugin.getScheduler().runTaskLater(() -> {
+            this.rosePlugin.getManager(DataManager.class).loadEffects();
+        }, 20L); // Wait 1 second (20 ticks) for full server initialization
+
         this.rosePlugin.getScheduler().runTaskLater(() -> {
             long ticks = Settings.TICKS_PER_PARTICLE.get();
             this.particleTask = this.rosePlugin.getScheduler().runTaskTimerAsync(this, 0, ticks);
@@ -79,7 +83,7 @@ public class ParticleManager extends Manager implements Listener, Runnable {
                 long worldGuardTicks = Settings.WORLDGUARD_CHECK_INTERVAL.get();
                 this.worldGuardTask = this.rosePlugin.getScheduler().runTaskTimer(this::updateWorldGuardStatuses, 0, worldGuardTicks);
             }
-        }, 5);
+        }, 25L); // Start particle tasks 5 ticks after loading data
     }
 
     @Override

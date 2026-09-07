@@ -208,12 +208,14 @@ public class DataManager extends AbstractDataManager {
                         double zPos = result.getDouble("zPos");
                         double yaw = result.getDouble("yaw");
                         double pitch = result.getDouble("pitch");
-                        World world = Bukkit.getWorld(result.getString("world"));
+                        String worldName = result.getString("world");
+                        World world = Bukkit.getWorld(worldName);
                         if (world == null) {
-                            // World was deleted, remove the fixed effect as it is no longer valid
-                            // Only delete on SQLite, as a MySQL server may have fixed effects from other servers saved
-                            if (this.databaseConnector instanceof SQLiteConnector && deleteInvalidFixedEffects)
-                                this.removeFixedEffect(playerUUID, fixedEffectId);
+                            // FOLIA FIX: On Folia, async threads cannot access world data reliably
+                            // World lookup may return null even if the world exists, causing data loss
+                            // Skip loading this fixed effect but DON'T delete it from database
+                            // The effect will be loaded on next reload when the world is properly accessible
+                            this.rosePlugin.getLogger().warning("Skipping fixed effect " + fixedEffectId + " for player " + playerUUID + " - world '" + worldName + "' not accessible during async load. Effect preserved in database.");
                             continue;
                         }
 
@@ -229,10 +231,17 @@ public class DataManager extends AbstractDataManager {
                         Vibration vibration = new Vibration(result.getInt("duration"));
                         ParticlePair particle = new ParticlePair(playerUUID, particleId, effect, style, itemMaterial, blockMaterial, color, noteColor, colorTransition, vibration);
 
-                        // Effect or style is now missing or disabled, remove the fixed effect
+                        // Effect or style is now missing or disabled
                         if (effect == null || style == null) {
-                            if (deleteInvalidFixedEffects)
+                            // FOLIA FIX: On Folia, managers may not be fully initialized during async load
+                            // Skip loading this fixed effect but DON'T delete unless explicitly configured
+                            // This prevents data loss due to initialization timing issues
+                            if (deleteInvalidFixedEffects) {
+                                this.rosePlugin.getLogger().warning("Deleting fixed effect " + fixedEffectId + " for player " + playerUUID + " - effect or style invalid (delete-invalid-fixed-effects=true)");
                                 this.removeFixedEffect(playerUUID, fixedEffectId);
+                            } else {
+                                this.rosePlugin.getLogger().warning("Skipping fixed effect " + fixedEffectId + " for player " + playerUUID + " - effect or style not loaded yet. Effect preserved in database.");
+                            }
                             continue;
                         }
 
