@@ -25,6 +25,7 @@ import dev.esophose.playerparticles.command.VersionCommandModule;
 import dev.esophose.playerparticles.command.WorldsCommandModule;
 import dev.esophose.playerparticles.particles.PPlayer;
 import dev.esophose.playerparticles.util.ParticleUtils;
+import dev.esophose.playerparticles.util.CommandDispatch;
 import dev.rosewood.rosegarden.RosePlugin;
 import dev.rosewood.rosegarden.hook.PlaceholderAPIHook;
 import dev.rosewood.rosegarden.manager.Manager;
@@ -37,7 +38,6 @@ import org.bukkit.command.BlockCommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Entity;
@@ -146,7 +146,7 @@ public class CommandManager extends Manager implements CommandExecutor, TabCompl
      */
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        LocaleManager localeManager = PlayerParticles.getInstance().getManager(LocaleManager.class);
+        LocaleManager localeManager = this.rosePlugin.getManager(LocaleManager.class);
 
         if (cmd.getName().equalsIgnoreCase("pp")) {
             String commandName = args.length > 0 ? args[0] : "";
@@ -156,30 +156,30 @@ public class CommandManager extends Manager implements CommandExecutor, TabCompl
                 return true;
             }
 
-            this.rosePlugin.getScheduler().runTaskAsync(() -> {
-                String[] cmdArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-
-                if (!commandModule.canConsoleExecute()) {
-                    if (!(sender instanceof Player)) {
+            String[] cmdArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
+            if (!(sender instanceof Player)) {
+                CommandDispatch.atSender(this.rosePlugin.getScheduler(), sender, () -> {
+                    if (!commandModule.canConsoleExecute()) {
                         sender.sendMessage(ChatColor.RED + "Error: This command can only be executed by a player.");
-                        return;
-                    }
-                } else if (sender instanceof ConsoleCommandSender || sender instanceof BlockCommandSender || sender instanceof CommandMinecart) {
-                    commandModule.onCommandExecute(PlayerParticlesAPI.getInstance().getConsolePPlayer(), cmdArgs);
-                    return;
-                }
-
-                Player p = (Player) sender;
-
-                this.rosePlugin.getManager(DataManager.class).getPPlayer(p.getUniqueId(), (pplayer) -> {
-                    PermissionManager permissionManager = PlayerParticles.getInstance().getManager(PermissionManager.class);
-                    if (commandModule.requiresEffectsAndStyles() && (permissionManager.getEffectsUserHasPermissionFor(pplayer).isEmpty() || permissionManager.getStylesUserHasPermissionFor(pplayer).isEmpty())) {
-                        localeManager.sendMessage(pplayer, "command-error-missing-effects-or-styles");
                     } else {
-                        commandModule.onCommandExecute(pplayer, cmdArgs);
+                        commandModule.onCommandExecute(PlayerParticlesAPI.getInstance().getConsolePPlayer(), cmdArgs);
                     }
                 });
-            });
+                return true;
+            }
+
+            Player p = (Player) sender;
+            // Keep database lookup asynchronous, then run permission checks and all module work
+            // on the player's owner even when DataManager returns a cached/global callback.
+            CommandDispatch.loadPlayer(this.rosePlugin.getScheduler(),
+                    this.rosePlugin.getManager(DataManager.class), p, loaded -> {
+                    PermissionManager permissionManager = this.rosePlugin.getManager(PermissionManager.class);
+                    if (commandModule.requiresEffectsAndStyles() && (permissionManager.getEffectsUserHasPermissionFor(loaded).isEmpty() || permissionManager.getStylesUserHasPermissionFor(loaded).isEmpty())) {
+                        localeManager.sendMessage(loaded, "command-error-missing-effects-or-styles");
+                    } else {
+                        commandModule.onCommandExecute(loaded, cmdArgs);
+                    }
+                });
 
             return true;
         } else if (cmd.getName().equalsIgnoreCase("ppo")) {
@@ -218,7 +218,8 @@ public class CommandManager extends Manager implements CommandExecutor, TabCompl
             }
 
             // Run the /ppo command
-            this.rosePlugin.getScheduler().runTask(() -> this.ppoCommand.onCommandExecute(sender, args));
+            CommandDispatch.atSender(this.rosePlugin.getScheduler(), sender,
+                    () -> this.ppoCommand.onCommandExecute(sender, args));
         }
         
         return true;

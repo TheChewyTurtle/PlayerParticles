@@ -8,7 +8,7 @@ plugins {
 
 group = 'dev.esophose'
 // Upstream 8.13 (Paper 26.2, RoseGarden 1.5.7) plus the Folia fork fixes; see ../FOLIA_SUPPORT.md
-version = '8.13-FOLIA'
+version = '8.13-FOLIA-26.3-test2'
 
 java {
     targetCompatibility = JavaVersion.VERSION_1_8
@@ -26,6 +26,8 @@ compileJava {
 }
 
 repositories {
+    mavenLocal()
+    maven { url = uri('../../maven-repository') }
     mavenCentral()
 
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
@@ -36,14 +38,30 @@ repositories {
     maven { url = 'https://repo.rosewooddev.io/repository/public/' }
 }
 
+configurations {
+    mockitoAgent
+}
+
 dependencies {
     // Pinned to the same Paper 26.2 build the other Killion plugins use (upstream uses 26.2.build.+)
-    compileOnly 'io.papermc.paper:paper-api:26.2.build.121-stable'
+    compileOnly 'dev.folia:folia-api:26.3.build.3-alpha'
     compileOnly 'org.jetbrains:annotations:24.0.1'
     compileOnly 'me.clip:placeholderapi:2.12.2'
     api 'org.codemc.worldguardwrapper:worldguardwrapper:1.2.1-SNAPSHOT'
     // RoseGarden 1.5.7+: year-based server versions (26.x) and the Folia scheduler wrapper
     api 'dev.rosewood:rosegarden:1.5.7'
+    testImplementation 'dev.folia:folia-api:26.3.build.3-alpha'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testImplementation 'org.mockito:mockito-core:5.21.0'
+    mockitoAgent('org.mockito:mockito-core:5.21.0') { transitive = false }
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+test {
+    useJUnitPlatform()
+    doFirst {
+        jvmArgs "-javaagent:${configurations.mockitoAgent.singleFile}"
+    }
 }
 
 shadowJar {
@@ -55,6 +73,7 @@ shadowJar {
 }
 
 processResources {
+    inputs.property('pluginVersion', project.version)
     from (sourceSets.main.resources.srcDirs) {
         include '**/*.yml'
         filter ReplaceTokens, tokens: ["version": project.property("version")]

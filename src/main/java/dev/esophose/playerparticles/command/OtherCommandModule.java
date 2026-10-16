@@ -7,6 +7,7 @@ import dev.esophose.playerparticles.manager.LocaleManager;
 import dev.esophose.playerparticles.manager.PermissionManager;
 import dev.esophose.playerparticles.particles.OtherPPlayer;
 import dev.esophose.playerparticles.particles.PPlayer;
+import dev.esophose.playerparticles.util.CommandDispatch;
 import dev.rosewood.rosegarden.utils.StringPlaceholders;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,8 +46,9 @@ public class OtherCommandModule implements CommandModuleSecondary {
             return;
         }
         
-        PlayerParticles.getInstance().getManager(DataManager.class).getPPlayer(other.getUniqueId(), (pplayer) -> {
-            OtherPPlayer otherPPlayer = new OtherPPlayer(sender, pplayer);
+        CommandDispatch.loadPlayer(PlayerParticles.getInstance().getScheduler(),
+                PlayerParticles.getInstance().getManager(DataManager.class), other, loaded -> {
+            OtherPPlayer otherPPlayer = new OtherPPlayer(sender, loaded);
 
             if (commandModule.requiresEffectsAndStyles() && (permissionManager.getEffectsUserHasPermissionFor(otherPPlayer).isEmpty() || permissionManager.getStylesUserHasPermissionFor(otherPPlayer).isEmpty())) {
                 localeManager.sendMessage(sender, "other-success", StringPlaceholders.of("player", other.getName()));
